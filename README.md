@@ -145,3 +145,7 @@ MIT License
 ---
 
 > *"在这地下世界，你的灵魂仍闪耀着光芒。保持决心，存活下去..."*
+
+---
+
+<p align="center"><sub>Made with ❤️ for 程序设计基础 A 课程设计</sub></p>
