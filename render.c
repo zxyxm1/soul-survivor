@@ -35,22 +35,29 @@ static void style_init(void) {
 
     /* 玩家 ♥ */
     sprintf(style_buf['@'], RED "\xe2\x99\xa5" RESET);
+    /* 玩家攻击闪烁：亮白粗体 ♥ */
+    sprintf(style_buf['#'], WHITE BOLD "\xe2\x99\xa5" RESET);
     /* 边框 */
     sprintf(style_buf['+'], WHITE "+" RESET);
     sprintf(style_buf['-'], WHITE "-" RESET);
-    sprintf(style_buf['|'], WHITE "|" RESET);
+    sprintf(style_buf['|'], WHITE BOLD "|" RESET);            /* 粗体竖线（远程弹幕） */
     /* 攻击效果：弹幕 */
     sprintf(style_buf['~'], YELLOW BOLD "~" RESET);           /* 闪电弹幕 */
-    /* 攻击效果：命中火花 */
+    /* 攻击效果：命中火花（多色 BOLD 粒子） */
     sprintf(style_buf['*'], YELLOW BOLD "*" RESET);           /* 爆发/命中 */
-    /* 攻击效果：劈砍动画（用非边框字符避免冲突）*/
-    sprintf(style_buf['/'], CYAN "/" RESET);                  /* 劈砍帧1 */
-    sprintf(style_buf['='], CYAN "=" RESET);                  /* 劈砍帧2 */
-    sprintf(style_buf['\\'], CYAN "\\" RESET);                /* 劈砍帧3 */
-    sprintf(style_buf['!'], CYAN "!" RESET);                  /* 劈砍帧4 */
+    sprintf(style_buf['.'], CYAN BOLD "." RESET);             /* 青色火花 */
+    sprintf(style_buf['x'], MAGENTA BOLD "x" RESET);          /* 紫色火花 */
+    sprintf(style_buf['o'], GREEN BOLD "o" RESET);            /* 绿色火花 */
+    /* 攻击效果：劈砍动画（BOLD 粗体更醒目） */
+    sprintf(style_buf['/'], CYAN BOLD "/" RESET);             /* 劈砍帧1 */
+    sprintf(style_buf['='], CYAN BOLD "=" RESET);             /* 劈砍帧2 */
+    sprintf(style_buf['\\'], CYAN BOLD "\\" RESET);           /* 劈砍帧3 */
+    sprintf(style_buf['!'], CYAN BOLD "!" RESET);             /* 劈砍帧4 */
+    /* 拖尾粒子：暗色中间点 */
+    sprintf(style_buf['`'], DIM "\xc2\xb7" RESET);
     /* 敌人（Latin-1 窄字符，1 终端列宽，比 ASCII 更美观） */
     sprintf(style_buf['m'], GREEN "\xc2\xb5" RESET);          /* Froggit: µ 生物感 */
-    sprintf(style_buf['.'], CYAN "\xc2\xb7" RESET);           /* Whimsun: · 轻盈 */
+    sprintf(style_buf[','], CYAN "\xc2\xb7" RESET);           /* Whimsun: · 轻盈 */
     sprintf(style_buf['d'], BLUE "\xc2\xb0" RESET);           /* Moldsmal: ° 圆形 */
     sprintf(style_buf['<'], MAGENTA "\xc2\xab" RESET);        /* Loox: « 兔耳 */
     sprintf(style_buf['p'], GREEN "\xc2\xb6" RESET);          /* Vegetoid: ¶ 草叶 */
@@ -251,9 +258,9 @@ void render_frame(Player *p, Enemy enemies[], WaveManager *wm, VisualEffect effe
         fb_set(e->x, e->y, ' ');  /* 清空该格，由 enemy_grid 覆盖 */
     }
 
-    /* --- 帧缓冲：绘制玩家（闪烁无敌） --- */
+    /* --- 帧缓冲：绘制玩家（闪烁无敌/攻击高亮） --- */
     if (!(p->invincible > 0 && p->invincible % 4 < 2)) {
-        fb_set(p->x, p->y, '@');
+        fb_set(p->x, p->y, (p->attack_flash > 0) ? '#' : '@');
     }
 
     /* --- 帧缓冲：绘制攻击效果（覆盖在玩家和敌人之上） --- */

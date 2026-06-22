@@ -1,6 +1,11 @@
 /**
- * effect.c - 视觉效果系统：弹幕、劈砍、命中火花
+ * effect.c - 视觉效果系统：弹幕、劈砍、命中火花、拖尾粒子
  * Soul Survivor: 地下生存
+ *
+ * 特效层次：
+ *   1. 弹幕飞行 → 身后生成 EFX_TRAIL 拖尾粒子
+ *   2. 弹幕/近战命中 → 生成 EFX_SPARK 火花粒子散射
+ *   3. 劈砍动画保留 + 首帧叠加火花爆发
  */
 #include "game.h"
 
@@ -81,6 +86,84 @@ int effects_spawn_slash(VisualEffect effects[], int x, int y, int duration,
     e->symbol = '/';       /* 初始符号，每帧旋转 */
     e->color = color;
 
+    /* 劈砍生成时立刻在目标位置生成火花爆发 */
+    effects_spawn_hit_burst(effects, x, y, 5, color);
+
+    return slot;
+}
+
+/* ============ 生成火花粒子（命中反馈） ============ */
+
+int effects_spawn_spark(VisualEffect effects[], int x, int y,
+        int lifetime, const char *color) {
+    int slot = effect_find_slot(effects);
+    if (slot < 0) return -1;
+
+    /* 随机偏移（±1格），让火花扩散 */
+    int dx = (rand() % 3) - 1;  /* -1, 0, 1 */
+    int dy = (rand() % 3) - 1;
+
+    VisualEffect *e = &effects[slot];
+    e->active = 1;
+    e->type = EFX_SPARK;
+    e->x = x + dx;
+    e->y = y + dy;
+    e->target_idx = -1;
+    e->damage = 0;
+    e->piercing = 0;
+    e->aoe_radius = 0;
+    e->lifetime = lifetime;
+    e->max_lifetime = lifetime;
+    e->speed = 0;
+    e->move_timer = 0;
+    e->max_range = 0;
+    e->traveled = 0;
+    /* 随机选择火花字符 */
+    {
+        char spark_chars[] = {'*', '+', '.', 'x', 'o'};
+        e->symbol = spark_chars[rand() % 5];
+    }
+    e->color = color;
+
+    return slot;
+}
+
+/**
+ * 在命中点生成火花爆炸（多个火花粒子散射）
+ */
+void effects_spawn_hit_burst(VisualEffect effects[], int x, int y,
+        int count, const char *color) {
+    int i;
+    for (i = 0; i < count; i++) {
+        int lifetime = 2 + rand() % 4;  /* 2-5帧 */
+        effects_spawn_spark(effects, x, y, lifetime, color);
+    }
+}
+
+/* ============ 生成拖尾粒子 ============ */
+
+static int spawn_trail(VisualEffect effects[], int x, int y) {
+    int slot = effect_find_slot(effects);
+    if (slot < 0) return -1;
+
+    VisualEffect *e = &effects[slot];
+    e->active = 1;
+    e->type = EFX_TRAIL;
+    e->x = x;
+    e->y = y;
+    e->target_idx = -1;
+    e->damage = 0;
+    e->piercing = 0;
+    e->aoe_radius = 0;
+    e->lifetime = 2;          /* 拖尾持续2帧 */
+    e->max_lifetime = 2;
+    e->speed = 0;
+    e->move_timer = 0;
+    e->max_range = 0;
+    e->traveled = 0;
+    e->symbol = '`';          /* 拖尾：反引号 key → style_buf 映射到 DIM · */
+    e->color = NULL;          /* 拖尾使用DIM暗色 */
+
     return slot;
 }
 
@@ -88,19 +171,19 @@ int effects_spawn_slash(VisualEffect effects[], int x, int y, int duration,
 
 static char slash_rotate_symbol(int lifetime, int max_lifetime) {
     int elapsed = max_lifetime - lifetime;
-    /* 使用不与边框冲突的字符：/ = \ ! */
+    /* 使用更醒目的旋转序列：/ → * → \ → + */
     switch (elapsed % 4) {
         case 0: return '/';
-        case 1: return '=';
+        case 1: return '*';
         case 2: return '\\';
-        case 3: return '!';
+        case 3: return '+';
         default: return '/';
     }
 }
 
 /* ============ 弹幕：朝目标移动并检测命中 ============ */
 
-static void projectile_update(VisualEffect *e, Enemy enemies[]) {
+static void projectile_update(VisualEffect *e, Enemy enemies[], VisualEffect effects[]) {
     /* 移动计时 */
     e->move_timer++;
     if (e->move_timer < e->speed) return;
@@ -115,6 +198,9 @@ static void projectile_update(VisualEffect *e, Enemy enemies[]) {
     }
 
     Enemy *target = &enemies[tidx];
+
+    /* 在旧位置生成拖尾粒子 */
+    spawn_trail(effects, e->x, e->y);
 
     /* 朝目标移动1格 */
     int dx = 0, dy = 0;
@@ -137,6 +223,9 @@ static void projectile_update(VisualEffect *e, Enemy enemies[]) {
     if (e->x == target->x && e->y == target->y) {
         /* 命中！造成伤害 */
         enemy_take_damage(target, e->damage);
+
+        /* 生成命中火花爆发 */
+        effects_spawn_hit_burst(effects, e->x, e->y, 6, e->color);
 
         /* 穿透：寻找下一个目标 */
         if (e->piercing) {
@@ -184,6 +273,24 @@ static void slash_update(VisualEffect *e) {
     }
 }
 
+/* ============ 火花：倒计时消失 ============ */
+
+static void spark_update(VisualEffect *e) {
+    e->lifetime--;
+    if (e->lifetime <= 0) {
+        e->active = 0;
+    }
+}
+
+/* ============ 拖尾：倒计时消失 ============ */
+
+static void trail_update(VisualEffect *e) {
+    e->lifetime--;
+    if (e->lifetime <= 0) {
+        e->active = 0;
+    }
+}
+
 /* ============ 主更新函数 ============ */
 
 void effects_update(VisualEffect effects[], Enemy enemies[], Player *p) {
@@ -194,10 +301,16 @@ void effects_update(VisualEffect effects[], Enemy enemies[], Player *p) {
 
         switch (effects[i].type) {
             case EFX_PROJECTILE:
-                projectile_update(&effects[i], enemies);
+                projectile_update(&effects[i], enemies, effects);
                 break;
             case EFX_SLASH:
                 slash_update(&effects[i]);
+                break;
+            case EFX_SPARK:
+                spark_update(&effects[i]);
+                break;
+            case EFX_TRAIL:
+                trail_update(&effects[i]);
                 break;
             default:
                 break;

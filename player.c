@@ -35,6 +35,7 @@ void player_init(Player *p) {
     p->move_timer = 50;
     p->frame_ms = 17;         /* 默认 ~60FPS */
     p->invincible = 220;     /* 开局短暂无敌 ~3.7秒 */
+    p->attack_flash = 0;     /* 攻击闪烁倒计时 */
     p->kills = 0;
 }
 
@@ -93,6 +94,10 @@ void player_update_cooldowns(Player *p) {
     /* 无敌帧 */
     if (p->invincible > 0) {
         p->invincible--;
+    }
+    /* 攻击闪烁 */
+    if (p->attack_flash > 0) {
+        p->attack_flash--;
     }
 }
 

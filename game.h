@@ -29,7 +29,7 @@
 #define ARENA_W     60      /* 竞技场宽度 */
 #define ARENA_H     17      /* 竞技场高度 */
 #define MAX_ENEMIES 30      /* 屏幕最大敌人数量 */
-#define MAX_EFFECTS 40      /* 最大同时显示效果数 */
+#define MAX_EFFECTS 60      /* 最大同时显示效果数（含火花/拖尾粒子） */
 #define MAX_WEAPONS 8       /* 最大武器种类 */
 #define MAX_PLAYER_WEAPONS 4 /* 玩家最多持有的武器数 */
 #define MAX_UPGRADES 20     /* 升级选项池大小 */
@@ -90,7 +90,9 @@ typedef enum {
 
 typedef enum {
     EFX_PROJECTILE,     /* 弹幕（远程） */
-    EFX_SLASH,           /* 劈砍（近战） */
+    EFX_SLASH,          /* 劈砍（近战） */
+    EFX_SPARK,          /* 命中火花粒子 */
+    EFX_TRAIL,          /* 弹幕拖尾粒子 */
 } EffectType;
 
 typedef enum {
@@ -139,6 +141,7 @@ typedef struct {
     int determination;    /* 决心：死亡时复活次数 */
     int magnet_range;     /* 吸经验范围 */
     int invincible;       /* 无敌帧数 */
+    int attack_flash;     /* 攻击闪烁倒计时（帧数）*/
     int move_timer;       /* 移动计时器：毫秒累积，帧率无关 */
     int frame_ms;         /* 上一帧实际耗时（毫秒）*/
     int kills;            /* 击杀计数 */
@@ -263,6 +266,10 @@ int  effects_spawn_projectile(VisualEffect effects[], int x, int y,
         int speed, int max_range, char symbol, const char *color);
 int  effects_spawn_slash(VisualEffect effects[], int x, int y, int duration,
         const char *color);
+int  effects_spawn_spark(VisualEffect effects[], int x, int y,
+        int lifetime, const char *color);
+void effects_spawn_hit_burst(VisualEffect effects[], int x, int y,
+        int count, const char *color);
 void effects_update(VisualEffect effects[], Enemy enemies[], Player *p);
 
 /* data.c */

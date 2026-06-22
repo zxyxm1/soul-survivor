@@ -123,6 +123,9 @@ void auto_attack(Player *p, Enemy enemies[], int weapon_slot, VisualEffect effec
                 proj_symbol, proj_color);
             fired++;
         }
+
+        /* 远程攻击闪烁：出招瞬间玩家变亮 */
+        p->attack_flash = 2;
     } else {
         /* ====== 近战武器：瞬间伤害 + 劈砍动画 ====== */
         int slash_duration;
@@ -130,31 +133,34 @@ void auto_attack(Player *p, Enemy enemies[], int weapon_slot, VisualEffect effec
 
         switch (wid) {
             case WEAPON_KNIFE:
-                slash_duration = 3;
+                slash_duration = 4;
                 slash_color = CYAN;
                 break;
             case WEAPON_FIRE:
-                slash_duration = 5;
+                slash_duration = 6;
                 slash_color = YELLOW;
                 break;
             default: /* STICK */
-                slash_duration = 4;
+                slash_duration = 5;
                 slash_color = CYAN;
                 break;
         }
 
-        /* 在第一个目标位置生成劈砍动画（不与玩家重叠） */
+        /* 在第一个目标位置生成劈砍动画 + 火花爆发 */
         if (target_count > 0) {
             int slash_tidx = targets_in_range[0];
             effects_spawn_slash(effects, enemies[slash_tidx].x, enemies[slash_tidx].y,
                 slash_duration, slash_color);
         }
 
-        /* 如果火焰有AoE，在最近目标周围额外生成爆发效果 */
+        /* 如果火焰有AoE，在最近目标周围额外生成红色爆发 */
         if (aoe > 0 && target_count > 0) {
             int tidx = targets_in_range[0];
             effects_spawn_slash(effects, enemies[tidx].x, enemies[tidx].y, slash_duration, RED);
         }
+
+        /* 近战攻击闪烁：持续时间稍长 */
+        p->attack_flash = 3;
 
         /* 攻击最近的N个目标（瞬间伤害） */
         int attacked = 0;
